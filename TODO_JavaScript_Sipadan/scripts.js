@@ -6,6 +6,7 @@ function showLogin() {
     document.getElementById("login-section").style.display = "block";
     document.getElementById("register-section").style.display = "none";
     document.getElementById("tasks-section").style.display = "none";
+    sessionStorage.setItem('currentView', 'login');
 }
 
 // Función para mostrar el formulario de registro
@@ -13,6 +14,7 @@ function showRegister() {
     document.getElementById("login-section").style.display = "none";
     document.getElementById("register-section").style.display = "block";
     document.getElementById("tasks-section").style.display = "none";
+    sessionStorage.setItem('currentView', 'register');
 }
 
 // Función para mostrar la app de tareas
@@ -22,6 +24,9 @@ function showTasks() {
     document.getElementById("tasks-section").style.display = "block";
     updateUserNameDisplay();
     displayTasks();
+
+    // Guardar la vista actual en sessionStorage
+    sessionStorage.setItem('currentView', 'tasks');
 }
 
 // Este bloque se ejecuta cuando el contenido del DOM está completamente cargado.
@@ -30,23 +35,35 @@ function showTasks() {
 // Si hay un usuario logueado, muestra sus tareas.
 // Añade un listener para restaurar el estado cuando se carga el contenido del DOM.
 document.addEventListener('DOMContentLoaded', function () {
+    // Añade un listener al checkbox de mostrar tareas completadas.
     document.getElementById('show-completed').addEventListener('change', displayTasks);
-    document.addEventListener('DOMContentLoaded', restoreState);
+// Restaura el estado de la aplicación.
+restoreState();
+    // Obtiene el estado del usuario y la vista actual almacenados en sessionStorage.
     const storedUser = sessionStorage.getItem('loggedInUser');
+    const currentView = sessionStorage.getItem('currentView');
+
+    // Restablece el estado del usuario y muestra la vista correspondiente.
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
         updateUserNameDisplay();
-        displayTasks();
-        showTasks();
+
+        // Elige qué vista mostrar basándose en la vista almacenada.
+        if (currentView === 'tasks') {
+            displayTasks();
+            showTasks();
+        } else if (currentView === 'register') {
+            showRegister();
+        } else {
+            // Si no hay una vista específica, muestra la vista de login.
+            showLogin();
+        }
     } else {
+        // Si no hay un usuario almacenado, muestra la vista de login.
         showLogin();
     }
-    const currentView = sessionStorage.getItem('currentView');
-    if (currentView) {
-        changeView(currentView);
-    }
-    restoreState();
-    // Aquí añades los event listeners para los botones o enlaces
+
+    // Elimina la llamada duplicada a restoreState aquí.
 });
 
 // Esta función maneja el registro de nuevos usuarios.
@@ -152,6 +169,7 @@ function loginUser() {
                 nombre: json.data.nombre,
             };
             sessionStorage.setItem('loggedInUser', JSON.stringify(currentUser));
+            document.getElementById('taskList').innerHTML = '';
             updateUserNameDisplay();  // Actualiza el nombre del usuario
             displayTasks(); // Carga las tareas del usuario logueado
             showTasks();
@@ -183,7 +201,6 @@ function updateUserNameDisplay() {
 function changeView(viewName) {
     // Cambia la vista aquí...
     showView(viewName);
-
     // Guarda la vista actual en sessionStorage
     sessionStorage.setItem('currentView', viewName);
 }
@@ -241,21 +258,20 @@ function addTask() {
 // Comprueba si hay tareas completadas y si deben mostrarse según el estado del checkbox.
 // Crea elementos del DOM para cada tarea y los añade a la lista de tareas en la página.
 function displayTasks() {
-    let loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    if (!loggedInUser) {
+    if (!currentUser) {
         console.log("No hay usuario logueado.");
         return;
     }
 
     let showCompleted = document.getElementById('show-completed').checked;
 
-    fetch('../API/tareas.GET.php?id_usuario=' + loggedInUser.id_usuario)
+    fetch('../API/tareas.GET.php?id_usuario=' + currentUser.id_usuario)
     .then(response => response.json())
     .then(json => {
-        if (json.success) {
-            let taskList = document.getElementById('taskList');
-            taskList.innerHTML = ''; 
+        let taskList = document.getElementById('taskList');
+        taskList.innerHTML = '';
 
+        if (json.success) {
             json.data.forEach(task => {
                 // Mostrar solo si la tarea no está completada o si el checkbox está marcado
                 if (!task.completada || showCompleted) {
@@ -293,10 +309,12 @@ function displayTasks() {
             updateTaskCounters(json.data);
         } else {
             console.error('Error al obtener las tareas:', json.error);
+            updateTaskCounters([]);
         }
     })
     .catch(error => {
         console.error('Error al realizar la solicitud:', error);
+        updateTaskCounters([]);
     });
 }
 
@@ -383,7 +401,6 @@ function deleteTask(taskId) {
 
 // Actualiza los contadores de tareas completadas y pendientes en la interfaz de usuario.
 function updateTaskCounters(tasks) {
-    // Contar tareas completadas y pendientes
     let completedTasks = tasks.filter(task => task.completada).length;
     let pendingTasks = tasks.length - completedTasks;
 
@@ -391,35 +408,27 @@ function updateTaskCounters(tasks) {
     document.getElementById('pendingTasks').textContent = `Pendientes: ${pendingTasks}`;
 }
 
-
 // Restaura la sección visualizada antes de recargar la página.
 // Lee la sección actual de localStorage y muestra la sección correspondiente.
 function restoreState() {
-    console.log("Restaurando estado...");
-    const currentSection = localStorage.getItem('currentSection');
-    console.log("Sección actual: ", currentSection);
+    // Obtiene el estado del usuario y la vista actual almacenados en sessionStorage.
+    const storedUser = sessionStorage.getItem('loggedInUser');
+    const currentView = sessionStorage.getItem('currentView');
 
-    switch (currentSection) {
-        case 'register':
-            console.log("Mostrando sección de registro");
+    // Restablece el estado del usuario y muestra la vista correspondiente.
+    if (storedUser) {
+        currentUser = JSON.parse(storedUser);
+        updateUserNameDisplay();
+
+        if (currentView === 'tasks') {
+            displayTasks();
+            showTasks();
+        } else if (currentView === 'register') {
             showRegister();
-            break;
-        case 'tasks':
-            console.log("Mostrando sección de tareas");
-            if (localStorage.getItem('loggedInUser')) {
-                showTasks();
-            } else {
-                showLogin();
-            }
-            break;
-        case 'login':
-        default:
-            console.log("Mostrando sección de login");
+        } else {
             showLogin();
-    }
-    // Si el usuario está logueado y la sección actual es 'tasks', actualiza los contadores de tareas.
-    if (currentUser && currentSection === 'tasks') {
-        displayTasks();
+        }
+    } else {
+        showLogin();
     }
 }
-
