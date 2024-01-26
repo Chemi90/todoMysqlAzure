@@ -1,3 +1,6 @@
+let currentUser = null;
+
+
 // Función para mostrar el formulario de login
 function showLogin() {
     document.getElementById("login-section").style.display = "block";
@@ -134,12 +137,12 @@ function loginUser() {
         console.log(json); // Depuración: Imprimir respuesta del servidor
 
         if (json.success) {
-            let loggedInUser = {
+            currentUser = {
                 id_usuario: json.data.id_usuario,
                 nombre: json.data.nombre,
             };
-            localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
-            displayTasks();
+            updateUserNameDisplay();  // Actualiza el nombre del usuario
+            displayTasks(); // Carga las tareas del usuario logueado
             showTasks();
         } else {
             alert('Usuario o contraseña incorrecta.');
@@ -151,8 +154,7 @@ function loginUser() {
 }
 
 function logout() {
-    localStorage.removeItem('loggedInUser');
-    localStorage.removeItem('currentSection'); // Borra la sección actual
+    currentUser = null;
     document.getElementById('taskList').innerHTML = ''; // Limpiar la lista de tareas
     showLogin(); // Mostrar la pantalla de inicio de sesión
 }
@@ -175,16 +177,14 @@ function addTask() {
         return;
     }
 
-    let loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    if (!loggedInUser || !loggedInUser.id_usuario) {
+    if (!currentUser || !currentUser.id_usuario) {
         alert('No hay usuario logueado o falta información del usuario.');
         return;
     }
 
     // Preparar el objeto de la tarea
     let task = {
-        nombre: taskName, // Asegúrate de que la clave aquí coincida con lo que tu PHP espera
-        completed: false  // Esta propiedad no es necesaria si tu PHP no la usa
+        nombre: taskName
     };
 
     // Hacer una solicitud POST a tu API para guardar la tarea
@@ -194,8 +194,8 @@ function addTask() {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            id_usuario: loggedInUser.id_usuario,
-            nombre: task.nombre  // Asegúrate de que las claves aquí coincidan con lo que tu PHP espera
+            id_usuario: currentUser.id_usuario,
+            nombre: task.nombre
         })
     })
     .then(response => response.json())
@@ -219,13 +219,12 @@ function addTask() {
 // Comprueba si hay tareas completadas y si deben mostrarse según el estado del checkbox.
 // Crea elementos del DOM para cada tarea y los añade a la lista de tareas en la página.
 function displayTasks() {
-    let loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    if (!loggedInUser) {
+    if (!currentUser) {
         console.log("No hay usuario logueado.");
         return;
     }
 
-    fetch('../API/tareas.GET.php?id_usuario=' + loggedInUser.id_usuario)
+    fetch('../API/tareas.GET.php?id_usuario=' + currentUser.id_usuario)
     .then(response => response.json())
     .then(json => {
         console.log("Datos de tareas recibidos:", json); // Verificar los datos recibidos
@@ -394,8 +393,8 @@ function restoreState() {
             showLogin();
     }
     // Si el usuario está logueado y la sección actual es 'tasks', actualiza los contadores de tareas.
-    if (localStorage.getItem('loggedInUser') && currentSection === 'tasks') {
-        updateTaskCounters(); // Actualiza los contadores de tareas.
+    if (currentUser && currentSection === 'tasks') {
+        displayTasks();
     }
 }
 
