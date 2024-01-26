@@ -32,8 +32,18 @@ function showTasks() {
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('show-completed').addEventListener('change', displayTasks);
     document.addEventListener('DOMContentLoaded', restoreState);
-    if (localStorage.getItem('loggedInUser')) {
+    const storedUser = sessionStorage.getItem('loggedInUser');
+    if (storedUser) {
+        currentUser = JSON.parse(storedUser);
+        updateUserNameDisplay();
         displayTasks();
+        showTasks();
+    } else {
+        showLogin();
+    }
+    const currentView = sessionStorage.getItem('currentView');
+    if (currentView) {
+        changeView(currentView);
     }
     restoreState();
     // Aquí añades los event listeners para los botones o enlaces
@@ -141,6 +151,7 @@ function loginUser() {
                 id_usuario: json.data.id_usuario,
                 nombre: json.data.nombre,
             };
+            sessionStorage.setItem('loggedInUser', JSON.stringify(currentUser));
             updateUserNameDisplay();  // Actualiza el nombre del usuario
             displayTasks(); // Carga las tareas del usuario logueado
             showTasks();
@@ -154,16 +165,27 @@ function loginUser() {
 }
 
 function logout() {
+    // Limpiar sessionStorage
+    sessionStorage.removeItem('loggedInUser');
+    
+    // Restablecer el estado de la aplicación
     currentUser = null;
-    document.getElementById('taskList').innerHTML = ''; // Limpiar la lista de tareas
-    showLogin(); // Mostrar la pantalla de inicio de sesión
+    document.getElementById('taskList').innerHTML = '';
+    showLogin();
 }
 
 function updateUserNameDisplay() {
-    let loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    if (loggedInUser) {
-        document.getElementById('userNameDisplay').textContent = loggedInUser.username;
+    if (currentUser) {
+        document.getElementById('userNameDisplay').textContent = currentUser.nombre;
     }
+}
+
+function changeView(viewName) {
+    // Cambia la vista aquí...
+    showView(viewName);
+
+    // Guarda la vista actual en sessionStorage
+    sessionStorage.setItem('currentView', viewName);
 }
 
 // Añade una nueva tarea.
