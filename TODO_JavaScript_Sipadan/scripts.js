@@ -219,52 +219,55 @@ function addTask() {
 // Comprueba si hay tareas completadas y si deben mostrarse según el estado del checkbox.
 // Crea elementos del DOM para cada tarea y los añade a la lista de tareas en la página.
 function displayTasks() {
-    if (!currentUser) {
+    let loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+    if (!loggedInUser) {
         console.log("No hay usuario logueado.");
         return;
     }
 
-    fetch('../API/tareas.GET.php?id_usuario=' + currentUser.id_usuario)
+    let showCompleted = document.getElementById('show-completed').checked;
+
+    fetch('../API/tareas.GET.php?id_usuario=' + loggedInUser.id_usuario)
     .then(response => response.json())
     .then(json => {
-        console.log("Datos de tareas recibidos:", json); // Verificar los datos recibidos
-
         if (json.success) {
             let taskList = document.getElementById('taskList');
-            taskList.innerHTML = ''; // Limpiar la lista actual antes de añadir nuevas tareas
+            taskList.innerHTML = ''; 
 
             json.data.forEach(task => {
-                let taskElement = document.createElement('div');
-                taskElement.classList.add('task-item');
-                
-                // Añadir nombre de la tarea
-                let taskName = document.createElement('span');
-                taskName.textContent = task.nombre;
-                taskElement.appendChild(taskName);
-        
-                // Añadir botón de completar si la tarea no está completada
-                if (!task.completada) {
-                    let completeButton = document.createElement('button');
-                    completeButton.textContent = 'Completar';
-                    completeButton.onclick = function() {
-                        completeTask(task.id_tarea);
+                // Mostrar solo si la tarea no está completada o si el checkbox está marcado
+                if (!task.completada || showCompleted) {
+                    let taskElement = document.createElement('div');
+                    taskElement.classList.add('task-item');
+                    
+                    // Añadir nombre de la tarea
+                    let taskName = document.createElement('span');
+                    taskName.textContent = task.nombre;
+                    taskElement.appendChild(taskName);
+            
+                    // Añadir botón de completar si la tarea no está completada
+                    if (!task.completada) {
+                        let completeButton = document.createElement('button');
+                        completeButton.textContent = 'Completar';
+                        completeButton.onclick = function() {
+                            completeTask(task.id_tarea);
+                        };
+                        taskElement.appendChild(completeButton);
+                    }
+            
+                    // Añadir botón de eliminar
+                    let deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Eliminar';
+                    deleteButton.onclick = function() {
+                        deleteTask(task.id_tarea);
                     };
-                    taskElement.appendChild(completeButton);
+                    taskElement.appendChild(deleteButton);
+            
+                    // Añadir el elemento de tarea a taskList
+                    taskList.appendChild(taskElement);
                 }
-        
-                // Añadir botón de eliminar
-                let deleteButton = document.createElement('button');
-                deleteButton.textContent = 'Eliminar';
-                deleteButton.onclick = function() {
-                    deleteTask(task.id_tarea);
-                };
-                taskElement.appendChild(deleteButton);
-        
-                // Añadir el elemento de tarea a taskList
-                taskList.appendChild(taskElement);
             });
 
-            // Llamar a updateTaskCounters si es necesario
             updateTaskCounters(json.data);
         } else {
             console.error('Error al obtener las tareas:', json.error);
